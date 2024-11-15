@@ -1,41 +1,49 @@
 -- Create a new database
-CREATE DATABASE store;
+CREATE DATABASE IF NOT EXISTS store;
 
 -- Use the database
 USE store;
 
--- Create Customers Table
-CREATE TABLE customers (
-    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+-- Create Customers Table with better error handling
+CREATE TABLE IF NOT EXISTS customers (
+    customer_id INT NOT NULL AUTO_INCREMENT,
     first_name VARCHAR(20) NOT NULL,
     last_name VARCHAR(40) NOT NULL,
-    email VARCHAR(50) UNIQUE,
-    phone VARCHAR(20) UNIQUE,
-    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    email VARCHAR(50) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (customer_id),
+    CONSTRAINT uc_email UNIQUE (email),
+    CONSTRAINT uc_phone UNIQUE (phone)
+) ENGINE=InnoDB;
 
--- Create Address Table with Foreign Key to Customers
-CREATE TABLE address (
-    address_id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT,
-    street_name VARCHAR(30),
-    street_number VARCHAR(10),
-    zip_code VARCHAR(9),
-    state VARCHAR(50),
-    city VARCHAR(50),
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-);
+-- Create Address Table with better constraints
+CREATE TABLE IF NOT EXISTS address (
+    address_id INT NOT NULL AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    street_name VARCHAR(30) NOT NULL,
+    street_number VARCHAR(10) NOT NULL,
+    zip_code VARCHAR(9) NOT NULL,
+    state VARCHAR(50) NOT NULL,
+    city VARCHAR(50) NOT NULL,
+    PRIMARY KEY (address_id),
+    CONSTRAINT fk_customer_address FOREIGN KEY (customer_id) 
+        REFERENCES customers(customer_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
 
--- Create Products Table
-CREATE TABLE products (
-    product_id INT AUTO_INCREMENT PRIMARY KEY,
+-- Create Products Table with enhanced validation
+CREATE TABLE IF NOT EXISTS products (
+    product_id INT NOT NULL AUTO_INCREMENT,
     product_name VARCHAR(50) NOT NULL,
     product_description VARCHAR(500),
-    price DECIMAL(10, 2),
-    product_stock_quantity INT,
+    price DECIMAL(10, 2) NOT NULL,
+    product_stock_quantity INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (product_id),
     CONSTRAINT chk_price CHECK (price >= 0),
     CONSTRAINT chk_stock CHECK (product_stock_quantity >= 0)
-);
+) ENGINE=InnoDB;
 
 -- Create Orders Table with Foreign Key to Customers
 CREATE TABLE orders (
