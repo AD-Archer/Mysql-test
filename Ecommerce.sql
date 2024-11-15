@@ -1,7 +1,8 @@
 -- Create a new database
--- CREATE DATABASE store;
+CREATE DATABASE store;
 
--- USE store;
+-- Use the database
+USE store;
 
 -- Create Customers Table
 CREATE TABLE customers (
@@ -32,7 +33,8 @@ CREATE TABLE products (
     product_description VARCHAR(500),
     price DECIMAL(10, 2),
     product_stock_quantity INT,
-    date_added DATE DEFAULT CURRENT_DATE
+    CONSTRAINT chk_price CHECK (price >= 0),
+    CONSTRAINT chk_stock CHECK (product_stock_quantity >= 0)
 );
 
 -- Create Orders Table with Foreign Key to Customers
@@ -42,7 +44,8 @@ CREATE TABLE orders (
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     order_status VARCHAR(20) DEFAULT 'Pending',
     total_order_amount DECIMAL(10, 2),
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    INDEX idx_customer_date (customer_id, order_date)
 );
 
 -- Create Order Details Table with Foreign Keys to Orders and Products
@@ -53,7 +56,9 @@ CREATE TABLE order_details (
     quantity_ordered INT,
     price_per_product DECIMAL(10, 2),
     FOREIGN KEY (order_id) REFERENCES orders(order_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id)
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    CONSTRAINT chk_quantity CHECK (quantity_ordered > 0),
+    CONSTRAINT chk_price_per_product CHECK (price_per_product >= 0)
 );
 
 -- Populate Data
@@ -97,15 +102,85 @@ UPDATE products
 SET product_stock_quantity = product_stock_quantity - 3
 WHERE product_id = 2;
 
--- Testing Queries
+-- Queries based on instructions
 
--- Retrieve all orders for a specific customer, showing only order IDs and dates
-SELECT order_id, order_date 
+-- 1. Calculate Average Order Value
+SELECT 
+    order_id, 
+    AVG(total_order_amount) AS average_order_value
+FROM orders;
+
+-- 2. Count Orders by Status
+SELECT 
+    order_status AS status, 
+    COUNT(*) AS order_count
 FROM orders
-WHERE customer_id = 1;
+GROUP BY order_status;
 
--- Retrieve all details for a specific order, showing each product’s name, quantity, and price per item
-SELECT products.product_name, order_details.quantity_ordered, order_details.price_per_product
-FROM order_details
-JOIN products ON order_details.product_id = products.product_id
-WHERE order_details.order_id = 1;
+-- 3. Find Highest and Lowest Priced Products
+-- Highest Priced Product
+SELECT 
+    product_id, 
+    product_name, 
+    price 
+FROM products
+ORDER BY price DESC
+LIMIT 1;
+
+-- Lowest Priced Product
+SELECT 
+    product_id, 
+    product_name, 
+    price 
+FROM products
+ORDER BY price ASC
+LIMIT 1;
+
+-- 4. Calculate Total Quantity Sold per Product
+SELECT 
+    p.product_id, 
+    p.product_name, 
+    SUM(od.quantity_ordered) AS total_quantity_sold
+FROM order_details od
+JOIN products p ON od.product_id = p.product_id
+GROUP BY p.product_id, p.product_name;
+
+-- 5. Calculate Total Sales Revenue per Day
+SELECT 
+    DATE(order_date) AS order_date, 
+    SUM(total_order_amount) AS total_revenue
+FROM orders
+GROUP BY DATE(order_date);
+
+-- 6. List Customers with Total Amount Spent
+SELECT 
+    c.customer_id, 
+    c.first_name, 
+    c.last_name, 
+    SUM(od.price_per_product * od.quantity_ordered) AS total_spent
+FROM order_details od
+JOIN orders o ON od.order_id = o.order_id
+JOIN customers c ON o.customer_id = c.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name;
+
+-- 7. Calculate Average Order Quantity per Product
+SELECT 
+    p.product_id, 
+    p.product_name, 
+    AVG(od.quantity_ordered) AS avg_quantity
+FROM order_details od
+JOIN products p ON od.product_id = p.product_id
+GROUP BY p.product_id, p.product_name;
+
+-- 8. Bonus: Find Top 5 Customers by Total Spending
+SELECT 
+    c.customer_id, 
+    c.first_name, 
+    c.last_name, 
+    SUM(od.price_per_product * od.quantity_ordered) AS total_spent
+FROM order_details od
+JOIN orders o ON od.order_id = o.order_id
+JOIN customers c ON o.customer_id = c.customer_id
+GROUP BY c.customer_id, c.first_name, c.last_name
+ORDER BY total_spent DESC
+LIMIT 5;
